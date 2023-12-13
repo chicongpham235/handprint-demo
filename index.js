@@ -27,9 +27,10 @@ async function init() {
   map = new google.maps.Map(document.getElementById("map"), mapOptions);
   const geojsons = dataProject
     .map((item) => {
-      const clients = item.clients;
+      const temp = structuredClone(item);
+      delete temp["map_coordinates"];
       item.map_coordinates.properties = {
-        clients: clients,
+        ...temp,
         total_quantity: item.unit_density_m2,
       };
       return item.map_coordinates;
@@ -38,7 +39,11 @@ async function init() {
 
   for (const g of geojsons) {
     const geojson = g.features[0];
-    geojson.properties.color = "#ffffff";
+    geojson.properties = {
+      ...geojson.properties,
+      color: "#ffffff",
+      ...g.properties,
+    };
     map.data.addGeoJson(g);
     map.data.setStyle(function (feature) {
       var color_property = feature.getProperty("color");
@@ -169,27 +174,54 @@ async function init() {
 
   map.fitBounds(bounds);
 
-  function createClientContent(layer) {
-    layer.addListener("mousemove", function (event) {
-      var feat = event.feature;
-      var html =
-        `<div>Client ID: <span style="font-weight:700">${feat.getProperty(
-          "id"
-        )}</span></div>` +
-        "<br>" +
-        `<div>Order Quantity: <span style="font-weight: 700">${feat.getProperty(
-          "order_quantity"
-        )}</span></div>`;
-      infowindow.setContent(html);
-      infowindow.setPosition(event.latLng);
-      infowindow.setOptions({ pixelOffset: new google.maps.Size(0, -34) });
-      infowindow.open(map);
-    });
+  map.data.addListener("mousemove", function (event) {
+    var feat = event.feature;
+    var html =
+      `<div style="font-weight:400">Project ID: <span style="font-weight:700">${feat.getProperty(
+        "id"
+      )}</span></div>` +
+      `<div style="font-weight:400">Name: <span style="font-weight:300">${feat.getProperty(
+        "name"
+      )}</span></div>` +
+      `<div style="font-weight:400">Category <span style="font-weight:300">${feat.getProperty(
+        "category"
+      )}</span></div>` +
+      `<div style="font-weight:400">Total Capacity: <span style="font-weight: 300">${feat.getProperty(
+        "total_capacity"
+      )}</span></div>` +
+      `<div style="font-weight:400">Unit Density m<sup>2</sup>: <span style="font-weight: 300">${feat.getProperty(
+        "unit_density_m2"
+      )}</span></div>`;
+    infowindow.setContent(html);
+    infowindow.setPosition(event.latLng);
+    infowindow.setOptions({ pixelOffset: new google.maps.Size(0, -34) });
+    infowindow.open(map);
+  });
 
-    layer.addListener("mouseout", function () {
-      infowindow.close();
-    });
-  }
+  map.data.addListener("mouseout", function () {
+    infowindow.close();
+  });
+}
+
+function createClientContent(layer) {
+  layer.addListener("mousemove", function (event) {
+    var feat = event.feature;
+    var html =
+      `<div style="font-weight: 400">Client ID: <span style="font-weight:700">${feat.getProperty(
+        "id"
+      )}</span></div>` +
+      `<div style="font-weight: 400">Order Quantity: <span style="font-weight: 300">${feat.getProperty(
+        "order_quantity"
+      )}</span></div>`;
+    infowindow.setContent(html);
+    infowindow.setPosition(event.latLng);
+    infowindow.setOptions({ pixelOffset: new google.maps.Size(0, -34) });
+    infowindow.open(map);
+  });
+
+  layer.addListener("mouseout", function () {
+    infowindow.close();
+  });
 }
 
 function createLayer(map, geojson) {
