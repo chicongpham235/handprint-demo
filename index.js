@@ -39,6 +39,14 @@ async function init() {
   for (const g of geojsons) {
     const geojson = g.features[0];
     geojson.properties.color = "#ffffff";
+    map.data.addGeoJson(g);
+    map.data.setStyle(function (feature) {
+      var color_property = feature.getProperty("color");
+      return {
+        fillColor: color_property,
+        strokeWeight: 1,
+      };
+    });
     const area = turf.area(geojson);
     const areas = g.properties.clients.map((item) => {
       return (item.order_quantity / g.properties.total_quantity) * area;
@@ -101,8 +109,8 @@ async function init() {
 
     let temp_area = 0;
     const temp_polygon = [];
+    const temp_layer = [];
     let idx = 0;
-    let color = generateColor(g.properties.clients[idx].id);
 
     for (const c of clipped) {
       if (idx == areas.length - 1 && is_full_area) {
@@ -113,21 +121,34 @@ async function init() {
           );
           return temp;
         }, geojson);
+        const color = generateColor(g.properties.clients[idx].id);
         const properties = g.properties.clients[idx];
         temp_polygon[idx].properties = { ...properties, color: color };
-        map.data.addGeoJson(temp_polygon[idx]);
+        temp_layer[idx] = createLayer(map, temp_polygon[idx]);
+        createClientContent(temp_layer[idx]);
+        temp_layer[idx].forEach((feature) => {
+          feature.getGeometry().forEachLatLng(function (latlng) {
+            bounds.extend(latlng);
+          });
+        });
         break;
       }
       if (
         temp_area <= areas[idx] + epxilon &&
         temp_area >= areas[idx] - epxilon
       ) {
+        const color = generateColor(g.properties.clients[idx].id);
         const properties = g.properties.clients[idx];
         temp_polygon[idx].properties = { ...properties, color: color };
-        map.data.addGeoJson(temp_polygon[idx]);
+        temp_layer[idx] = createLayer(map, temp_polygon[idx]);
+        createClientContent(temp_layer[idx]);
+        temp_layer[idx].forEach((feature) => {
+          feature.getGeometry().forEachLatLng(function (latlng) {
+            bounds.extend(latlng);
+          });
+        });
         temp_area = 0;
         idx++;
-        color = generateColor(g.properties.clients[idx].id);
       } else {
         if (!temp_polygon[idx]) {
           temp_polygon[idx] = c;
@@ -144,45 +165,42 @@ async function init() {
         temp_area += turf.area(c);
       }
     }
-
-    // map.data.addGeoJson(g);
-
-    map.data.setStyle(function (feature) {
-      var color_property = feature.getProperty("color");
-      return {
-        fillColor: color_property,
-        strokeWeight: 0,
-      };
-    });
   }
-
-  map.data.forEach(function (feature) {
-    feature.getGeometry().forEachLatLng(function (latlng) {
-      bounds.extend(latlng);
-    });
-  });
 
   map.fitBounds(bounds);
 
-  map.data.addListener("mousemove", function (event) {
-    var feat = event.feature;
-    var html =
-      `<div>Client ID: <span style="font-weight:700">${feat.getProperty(
-        "id"
-      )}</span></div>` +
-      "<br>" +
-      `<div>Order Quantity: <span style="font-weight: 700">${feat.getProperty(
-        "order_quantity"
-      )}</span></div>`;
-    infowindow.setContent(html);
-    infowindow.setPosition(event.latLng);
-    infowindow.setOptions({ pixelOffset: new google.maps.Size(0, -34) });
-    infowindow.open(map);
-  });
+  function createClientContent(layer) {
+    layer.addListener("mousemove", function (event) {
+      var feat = event.feature;
+      var html =
+        `<div>Client ID: <span style="font-weight:700">${feat.getProperty(
+          "id"
+        )}</span></div>` +
+        "<br>" +
+        `<div>Order Quantity: <span style="font-weight: 700">${feat.getProperty(
+          "order_quantity"
+        )}</span></div>`;
+      infowindow.setContent(html);
+      infowindow.setPosition(event.latLng);
+      infowindow.setOptions({ pixelOffset: new google.maps.Size(0, -34) });
+      infowindow.open(map);
+    });
 
-  map.data.addListener("mouseout", function () {
-    infowindow.close();
+    layer.addListener("mouseout", function () {
+      infowindow.close();
+    });
+  }
+}
+
+function createLayer(map, geojson) {
+  const layer = new google.maps.Data({ map: map });
+  layer.addGeoJson(geojson);
+  layer.setStyle({
+    fillColor: geojson.properties.color ?? "#ffffff",
+    strokeWeight: 0,
   });
+  layer.setMap(map);
+  return layer;
 }
 
 async function fetchData() {
