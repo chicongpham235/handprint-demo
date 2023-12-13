@@ -19,7 +19,8 @@ async function init() {
     zoom: zoom,
     tilt: 45,
     center: center,
-    mapTypeControl: false,
+    mapTypeControl: true,
+    clickableIcons: false,
     restriction: {
       latLngBounds: { north: 85, south: -85, west: -180, east: 180 },
     },
