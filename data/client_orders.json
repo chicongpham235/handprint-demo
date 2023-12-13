@@ -10,15 +10,8 @@
     "id": 2,
     "project_id": 1,
     "company_id": 2,
-    "order_quantity": 4,
+    "order_quantity": 5,
     "pledge_amount_USD": 52.5
-  },
-  {
-    "id": 4,
-    "project_id": 1,
-    "company_id": 2,
-    "order_quantity": 1,
-    "pledge_amount_USD": 10.5
   },
   {
     "id": 3,
